@@ -1,4 +1,3 @@
-
 {
     "geode": "5.11.2",
     "gd": {
@@ -7,8 +6,14 @@
     },
     "id": "studio.aidecorator",
     "name": "AI Decorator",
-    "version": "v0.5.2",
+    "version": "v0.5.4",
     "developer": "AI Decorator Team",
-    "description": "Offline procedural decorator with five named style presets, mirrored compositions, conservative placement bounds, and Android CI builds for real editor object placement.",
-    "early-load": false
+    "description": "Offline procedural level decorator with expanded scenery distribution, responsive editor controls, and custom mod logo.",
+    "early-load": false,
+    "tags": [
+        "editor",
+        "offline",
+        "utility",
+        "content"
+    ]
 }
