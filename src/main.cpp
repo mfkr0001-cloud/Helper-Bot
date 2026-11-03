@@ -1,4 +1,3 @@
-
 #include <Geode/Geode.hpp>
 #include <Geode/modify/EditorUI.hpp>
 #include <Geode/ui/TextInput.hpp>
@@ -18,7 +17,7 @@ namespace {
     constexpr float HEADER_HEIGHT = 34.f;
     constexpr float RESIZE_HIT_SIZE = 24.f;
     constexpr float MIN_PANEL_WIDTH = 340.f;
-    constexpr float MIN_PANEL_HEIGHT = 250.f;
+    constexpr float MIN_PANEL_HEIGHT = 300.f;
 
     float clampFloat(float value, float minimum, float maximum) {
         if (maximum < minimum) maximum = minimum;
@@ -52,6 +51,7 @@ namespace {
         EditorUI* m_editorUI = nullptr;
         LevelEditorLayer* m_editorLayer = nullptr;
         std::uint32_t m_generationSeed = 0xA1DEC0DEu;
+        std::vector<CCLayerColor*> m_buttonTiles;
 
         geode::TextInput* m_promptInput = nullptr;
         geode::TextInput* m_colorInput = nullptr;
@@ -88,7 +88,9 @@ namespace {
             m_panelSize.width = Mod::get()->getSavedValue<float>("panel-width", 460.f);
             m_panelSize.height = Mod::get()->getSavedValue<float>("panel-height", 320.f);
             m_panelSize.width = clampFloat(m_panelSize.width, 300.f, std::max(300.f, win.width - 16.f));
-            m_panelSize.height = clampFloat(m_panelSize.height, 220.f, std::max(220.f, win.height - 16.f));
+            float maxHeight = std::max(220.f, win.height - 16.f);
+            float minHeight = std::min(MIN_PANEL_HEIGHT, maxHeight);
+            m_panelSize.height = clampFloat(m_panelSize.height, minHeight, maxHeight);
 
             float defaultX = std::max(8.f, win.width - m_panelSize.width - 18.f);
             float defaultY = std::max(8.f, win.height - m_panelSize.height - 54.f);
@@ -99,7 +101,6 @@ namespace {
             m_restorePosition.y = Mod::get()->getSavedValue<float>("restore-panel-y", defaultY);
             m_restoreSize.width = Mod::get()->getSavedValue<float>("restore-panel-width", 460.f);
             m_restoreSize.height = Mod::get()->getSavedValue<float>("restore-panel-height", 320.f);
-
             if (m_maximized) {
                 m_panelSize = CCSize(
                     std::max(300.f, win.width - 16.f),
@@ -115,9 +116,7 @@ namespace {
         CCSize availableSize() {
             if (auto parent = getParent()) {
                 auto size = parent->getContentSize();
-                if (size.width > 0.f && size.height > 0.f) {
-                    return size;
-                }
+                if (size.width > 0.f && size.height > 0.f) return size;
             }
             return CCDirector::sharedDirector()->getWinSize();
         }
@@ -158,6 +157,15 @@ namespace {
             return CCMenuItemLabel::create(label, this, callback);
         }
 
+        CCLayerColor* addButtonTile(float width, float height) {
+            auto tile = CCLayerColor::create(ccc4(30, 48, 72, 235), width, height);
+            if (!tile) return nullptr;
+            tile->setAnchorPoint({0.5f, 0.5f});
+            addChild(tile, 2);
+            m_buttonTiles.push_back(tile);
+            return tile;
+        }
+
         void buildInterface() {
             removeAllChildrenWithCleanup(true);
             m_background = nullptr;
@@ -183,6 +191,7 @@ namespace {
             m_shuffleItem = nullptr;
             m_resetItem = nullptr;
             m_generateItem = nullptr;
+            m_buttonTiles.clear();
 
             setContentSize(m_panelSize);
 
@@ -240,6 +249,9 @@ namespace {
             m_colorInput->setPosition({88.f, m_panelSize.height - 158.f});
             addChild(m_colorInput, 4);
 
+            // Separate square backplates make each setting a distinct touch target.
+            for (int i = 0; i < 4; ++i) addButtonTile(142.f, 24.f);
+
             auto settingsMenu = CCMenu::create();
             settingsMenu->setPosition(CCPointZero);
             m_styleLabel = makeLabel("STYLE: AUTO", 0.34f);
@@ -256,17 +268,20 @@ namespace {
             if (m_layoutItem) settingsMenu->addChild(m_layoutItem);
             addChild(settingsMenu, 5);
 
+            // Primary actions get larger, evenly spaced square tiles.
+            for (int i = 0; i < 3; ++i) addButtonTile(126.f, 30.f);
+
             auto actionMenu = CCMenu::create();
             actionMenu->setPosition(CCPointZero);
-            m_shuffleItem = makeMenuItem("TRY EXAMPLE", 0.42f, menu_selector(EditorFloatingPanel::onShuffle));
-            m_resetItem = makeMenuItem("RESET", 0.42f, menu_selector(EditorFloatingPanel::onReset));
-            m_generateItem = makeMenuItem("GENERATE DECOR", 0.42f, menu_selector(EditorFloatingPanel::onGenerate));
+            m_shuffleItem = makeMenuItem("EXAMPLE", 0.34f, menu_selector(EditorFloatingPanel::onShuffle));
+            m_resetItem = makeMenuItem("RESET", 0.36f, menu_selector(EditorFloatingPanel::onReset));
+            m_generateItem = makeMenuItem("GENERATE", 0.36f, menu_selector(EditorFloatingPanel::onGenerate));
             if (m_shuffleItem) actionMenu->addChild(m_shuffleItem);
             if (m_resetItem) actionMenu->addChild(m_resetItem);
             if (m_generateItem) actionMenu->addChild(m_generateItem);
             addChild(actionMenu, 5);
 
-            m_footer = makeLabel("V0.5.2  |  OFFLINE COMPOSITION  |  SELECT OBJECTS  |  GENERATE DECOR", 0.28f);
+            m_footer = makeLabel("V0.5.4  |  FULL-AREA SCENERY  |  LOCAL GENERATION", 0.27f);
             if (m_footer) {
                 m_footer->setOpacity(175);
                 m_footer->setPosition({m_panelSize.width / 2.f, 20.f});
@@ -309,13 +324,34 @@ namespace {
             if (m_colorLabel) m_colorLabel->setPosition({18.f, m_panelSize.height - 132.f});
             if (m_maximizeItem) m_maximizeItem->setPosition({m_panelSize.width - 58.f, m_panelSize.height - 17.f});
             if (m_hideItem) m_hideItem->setPosition({m_panelSize.width - 21.f, m_panelSize.height - 17.f});
-            if (m_styleItem) m_styleItem->setPosition({m_panelSize.width - 105.f, m_panelSize.height - 132.f});
-            if (m_densityItem) m_densityItem->setPosition({m_panelSize.width - 105.f, m_panelSize.height - 162.f});
-            if (m_accentItem) m_accentItem->setPosition({m_panelSize.width - 105.f, m_panelSize.height - 192.f});
-            if (m_layoutItem) m_layoutItem->setPosition({m_panelSize.width - 105.f, m_panelSize.height - 222.f});
-            if (m_shuffleItem) m_shuffleItem->setPosition({90.f, 51.f});
-            if (m_resetItem) m_resetItem->setPosition({m_panelSize.width / 2.f, 51.f});
-            if (m_generateItem) m_generateItem->setPosition({m_panelSize.width - 105.f, 51.f});
+            // Responsive two-row control grid: every option stays centred on its own tile.
+            const float settingsTileWidth = std::min(142.f, m_panelSize.width - 190.f);
+            const float settingsX = m_panelSize.width - settingsTileWidth * 0.5f - 14.f;
+            const float settingY[4] = {
+                m_panelSize.height - 132.f, m_panelSize.height - 162.f,
+                m_panelSize.height - 192.f, m_panelSize.height - 222.f
+            };
+            if (m_styleItem) m_styleItem->setPosition({settingsX, settingY[0]});
+            if (m_densityItem) m_densityItem->setPosition({settingsX, settingY[1]});
+            if (m_accentItem) m_accentItem->setPosition({settingsX, settingY[2]});
+            if (m_layoutItem) m_layoutItem->setPosition({settingsX, settingY[3]});
+            const float actionTileWidth = std::min(126.f, (m_panelSize.width - 36.f) / 3.f - 8.f);
+            const float actionX[3] = {
+                m_panelSize.width / 6.f,
+                m_panelSize.width / 2.f,
+                m_panelSize.width * 5.f / 6.f
+            };
+            if (m_shuffleItem) m_shuffleItem->setPosition({actionX[0], 51.f});
+            if (m_resetItem) m_resetItem->setPosition({actionX[1], 51.f});
+            if (m_generateItem) m_generateItem->setPosition({actionX[2], 51.f});
+            for (size_t i = 0; i < 4 && i < m_buttonTiles.size(); ++i) {
+                m_buttonTiles[i]->changeWidthAndHeight(settingsTileWidth, 25.f);
+                m_buttonTiles[i]->setPosition({settingsX, settingY[i]});
+            }
+            for (size_t i = 0; i < 3 && i + 4 < m_buttonTiles.size(); ++i) {
+                m_buttonTiles[i + 4]->changeWidthAndHeight(actionTileWidth, 30.f);
+                m_buttonTiles[i + 4]->setPosition({actionX[i], 51.f});
+            }
             if (m_footer) m_footer->setPosition({m_panelSize.width / 2.f, 20.f});
             if (m_resizeHint) m_resizeHint->setPosition({m_panelSize.width - 14.f, 13.f});
         }
@@ -605,11 +641,17 @@ namespace {
             if (!getCurrentSelectionBounds(selection, selectedCount)) {
                 FLAlertLayer::create(
                     "AI DECORATOR",
-                    "Сначала выдели один или несколько объектов уровня, чтобы мод понял, какую область декорировать.",
+                    "Выдели объекты по всей длине участка уровня, который нужно оформить. По горизонтали будет использован диапазон выделения, а по вертикали — всё пространство уровня.",
                     "OK"
                 )->show();
                 return;
             }
+
+            // Use the selected objects only to determine the horizontal level span.
+            // The vertical range is expanded to the full GD editor canvas, so scenery
+            // is generated above and below the gameplay corridor rather than on its path.
+            selection.bottom = 0.f;
+            selection.top = 360.f;
 
             auto plan = aideco::makePlan(
                 m_promptValue,
@@ -637,7 +679,7 @@ namespace {
                 auto object = m_editorLayer->createObject(
                     placement.objectID,
                     {placement.x, placement.y},
-                    false
+                    false // false keeps the normal editor Undo history enabled
                 );
                 if (!object) continue;
 
@@ -669,6 +711,7 @@ namespace {
             std::string message = "Готово! Создано объектов декора: " + std::to_string(created) +
                 " из " + std::to_string(placements.objects.size()) +
                 "\nВыделенных объектов-ориентиров: " + std::to_string(selectedCount) +
+                "\nРежим: декор всей высоты участка, независимо от игровой линии" +
                 "\nСтиль: " + plan.style + "\nТема: " + plan.detectedThemes +
                 "\nЦвета: " + plan.primaryColor + " / " + plan.accentColor +
                 "\nКомпозиция: " + plan.layout + "\nПлотность: " + plan.density +
@@ -686,6 +729,8 @@ class $modify(AIDecoratorEditorUI, EditorUI) {
     bool init(LevelEditorLayer* editorLayer) {
         if (!EditorUI::init(editorLayer)) return false;
 
+        // Both the launcher and the panel are attached only to EditorUI.
+        // They never appear in the main menu or during normal gameplay.
         auto winSize = CCDirector::sharedDirector()->getWinSize();
 
         auto panel = EditorFloatingPanel::create(this, m_editorLayer);
@@ -696,6 +741,9 @@ class $modify(AIDecoratorEditorUI, EditorUI) {
 
         auto launcherMenu = CCMenu::create();
         launcherMenu->setPosition({winSize.width - 54.f, winSize.height - 32.f});
+        auto launcherTile = CCLayerColor::create(ccc4(30, 48, 72, 235), 76.f, 30.f);
+        launcherTile->setAnchorPoint({0.5f, 0.5f});
+        launcherMenu->addChild(launcherTile, 0);
         auto launcherLabel = CCLabelBMFont::create("DECOR", "bigFont.fnt");
         launcherLabel->setScale(0.46f);
         auto launcherButton = CCMenuItemLabel::create(
