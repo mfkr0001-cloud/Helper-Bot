@@ -29,10 +29,11 @@ namespace aideco {
         }
 
         int densityTarget(std::string const& density) {
-            if (density == "LOW") return 10;
-            if (density == "HIGH") return 34;
-            if (density == "ULTRA") return 48;
-            return 22;
+            // v0.5.3 decorates the full selected level span, not only the gameplay corridor.
+            if (density == "LOW") return 28;
+            if (density == "HIGH") return 88;
+            if (density == "ULTRA") return 132;
+            return 56;
         }
 
         std::vector<ObjectChoice> choicesForStyle(std::string const& style) {
@@ -252,15 +253,20 @@ namespace aideco {
                     addPlacement(batch, occupied, id, cx + xOffset, y, itemScale, 0.f, 185, 1, true);
                 }
             } else {
-                // Balanced layout: two staggered clusters keep the centre readable.
-                for (int i = 0; i < 6; ++i) {
-                    auto side = i % 2 == 0 ? 0.24f : 0.76f;
-                    auto row = static_cast<float>(i / 2);
-                    auto x = r.left + r.width() * side;
-                    auto y = r.bottom + r.height() * (0.30f + row * 0.20f);
-                    addPlacement(batch, occupied, (i % 3 == 0) ? 1766 : 1764,
-                        x, y, scale * (i % 3 == 0 ? 0.68f : 0.42f),
-                        static_cast<float>((i * 45) % 180), 175, static_cast<unsigned char>(i % 2), true);
+                // Distributed architecture: decorate the ceiling and floor bands while
+                // deliberately leaving the central gameplay corridor comparatively clear.
+                for (int i = 0; i < 8; ++i) {
+                    float t = static_cast<float>(i) / 7.f;
+                    float x = r.left + r.width() * (0.10f + 0.80f * t);
+                    bool upper = (i % 2) == 0;
+                    float y = upper
+                        ? r.bottom + r.height() * (0.76f + 0.08f * (i % 3) / 2.f)
+                        : r.bottom + r.height() * (0.16f + 0.08f * (i % 3) / 2.f);
+                    int id = (i % 3 == 0) ? 1766 : ((i % 3 == 1) ? 1764 : 1767);
+                    float itemScale = scale * ((i % 3 == 0) ? 0.62f : 0.40f);
+                    addPlacement(batch, occupied, id, x, y, itemScale,
+                        static_cast<float>((i * 45) % 180), 178,
+                        static_cast<unsigned char>(i % 2), true);
                 }
             }
         }
@@ -306,8 +312,8 @@ namespace aideco {
 
         auto area = std::max(1.f, batch.safeRect.width() * batch.safeRect.height());
         auto areaFactor = clampf(std::sqrt(area) / 220.f, 0.25f, 1.f);
-        auto target = std::max(5, static_cast<int>(std::round(densityTarget(plan.density) * areaFactor)));
-        target = std::min(target, 48);
+        auto target = std::max(12, static_cast<int>(std::round(densityTarget(plan.density) * areaFactor)));
+        target = std::min(target, 140);
 
         std::mt19937 rng(seed == 0 ? 0xA1DEC0DEu : seed);
         std::vector<Point> occupied;
@@ -316,7 +322,8 @@ namespace aideco {
         addFrame(batch, occupied, batch.safeRect);
         addCompositionMotif(batch, occupied, batch.safeRect, plan.layout);
 
-        // Fill remaining negative space with spaced detail points rather than an unrestricted scatter.
+        // Fill both upper and lower decoration bands. The centre is sampled less often,
+        // so the generated art does not simply trace or clutter the gameplay route.
         auto baseCount = static_cast<int>(batch.objects.size());
         auto fillTarget = std::max(0, target - baseCount);
         int accepted = 0;
@@ -325,6 +332,16 @@ namespace aideco {
         while (accepted < fillTarget && attempts < maxAttempts) {
             ++attempts;
             auto placement = randomPlacement(rng, choices, batch.safeRect, plan.layout, accepted, std::max(1, fillTarget));
+            if (plan.layout != "RHYTHM" && plan.layout != "MIRRORED" && plan.layout != "CENTERED") {
+                // 86% of free details are pushed into the upper/lower scenery bands.
+                // The centre remains available for occasional depth accents, not a player-path trace.
+                int band = randomInt(rng, 0, 99);
+                float yFraction = 0.5f;
+                if (band < 43) yFraction = randomFloat(rng, 0.76f, 0.95f);
+                else if (band < 86) yFraction = randomFloat(rng, 0.05f, 0.24f);
+                else yFraction = randomFloat(rng, 0.34f, 0.66f);
+                placement.y = batch.safeRect.bottom + batch.safeRect.height() * yFraction;
+            }
             auto radius = std::max(2.5f, placement.scale * 10.f);
             if (!spacedEnough(occupied, placement.x, placement.y, radius, 0.78f)) continue;
             batch.objects.push_back(placement);
