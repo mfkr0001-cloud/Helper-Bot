@@ -1,3 +1,4 @@
+
 #include <Geode/Geode.hpp>
 #include <Geode/modify/EditorUI.hpp>
 #include <Geode/ui/TextInput.hpp>
@@ -98,11 +99,12 @@ namespace {
             m_restorePosition.y = Mod::get()->getSavedValue<float>("restore-panel-y", defaultY);
             m_restoreSize.width = Mod::get()->getSavedValue<float>("restore-panel-width", 460.f);
             m_restoreSize.height = Mod::get()->getSavedValue<float>("restore-panel-height", 320.f);
+
             if (m_maximized) {
-                m_panelSize = {
+                m_panelSize = CCSize(
                     std::max(300.f, win.width - 16.f),
                     std::max(220.f, win.height - 16.f)
-                };
+                );
                 setPosition({8.f, 8.f});
             } else {
                 setPosition({x, y});
@@ -110,10 +112,12 @@ namespace {
             clampToParent();
         }
 
-        CCSize availableSize() const {
+        CCSize availableSize() {
             if (auto parent = getParent()) {
                 auto size = parent->getContentSize();
-                if (size.width > 0.f && size.height > 0.f) return size;
+                if (size.width > 0.f && size.height > 0.f) {
+                    return size;
+                }
             }
             return CCDirector::sharedDirector()->getWinSize();
         }
@@ -130,7 +134,7 @@ namespace {
             });
         }
 
-        void saveGeometry() const {
+        void saveGeometry() {
             Mod::get()->setSavedValue<float>("panel-x", getPositionX());
             Mod::get()->setSavedValue<float>("panel-y", getPositionY());
             Mod::get()->setSavedValue<float>("panel-width", m_panelSize.width);
@@ -633,7 +637,7 @@ namespace {
                 auto object = m_editorLayer->createObject(
                     placement.objectID,
                     {placement.x, placement.y},
-                    false // false keeps the normal editor Undo history enabled
+                    false
                 );
                 if (!object) continue;
 
@@ -682,8 +686,6 @@ class $modify(AIDecoratorEditorUI, EditorUI) {
     bool init(LevelEditorLayer* editorLayer) {
         if (!EditorUI::init(editorLayer)) return false;
 
-        // Both the launcher and the panel are attached only to EditorUI.
-        // They never appear in the main menu or during normal gameplay.
         auto winSize = CCDirector::sharedDirector()->getWinSize();
 
         auto panel = EditorFloatingPanel::create(this, m_editorLayer);
