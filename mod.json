@@ -1,0 +1,13 @@
+{
+    "geode": "v5.11.2",
+    "gd": {
+        "win": "2.2081",
+        "android": "2.2081"
+    },
+    "id": "studio.aidecorator",
+    "name": "AI Decorator",
+    "version": "v0.5.2",
+    "developer": "AI Decorator Team",
+    "description": "Offline procedural decorator with five named style presets, mirrored compositions, conservative placement bounds, and Android CI builds for real editor object placement.",
+    "early-load": false
+}
