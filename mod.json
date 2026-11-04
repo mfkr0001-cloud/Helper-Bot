@@ -6,9 +6,9 @@
     },
     "id": "studio.aidecorator",
     "name": "AI Decorator",
-    "version": "v0.5.4",
+    "version": "v1.0.0",
     "developer": "AI Decorator Team",
-    "description": "Offline procedural level decorator with expanded scenery distribution, responsive editor controls, and custom mod logo.",
+    "description": "Full-level procedural decorator with 50 styles, geometry-aware placement, bounded generation and editor Undo support.",
     "early-load": false,
     "tags": [
         "editor",
