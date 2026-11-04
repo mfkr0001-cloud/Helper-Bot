@@ -104,6 +104,20 @@ namespace aideco {
         }
     }
 
+    std::vector<std::string> availableStyles() {
+        return {
+            "AUTO", "NEON", "TECHNO", "FUTURISM", "CYBERPUNK", "SYNTHWAVE",
+            "GALAXY", "SPACE", "CELESTIAL", "STARS", "NATURE", "FOREST",
+            "JUNGLE", "ORGANIC", "OCEAN", "UNDERWATER", "CORAL", "SKY",
+            "CLOUD", "DARK", "GOTHIC", "SHADOW", "ABYSS", "HAUNTED",
+            "VOLCANIC", "LAVA", "FIRE", "DESERT", "ANCIENT", "RUINS",
+            "TEMPLE", "EGYPTIAN", "ICE", "FROST", "SNOW", "CRYSTAL",
+            "CANDY", "TOY", "CARTOON", "PIXEL", "ARCADE", "RETRO",
+            "GEOMETRIC", "ABSTRACT", "INDUSTRIAL", "FACTORY", "MACHINE",
+            "HOLOGRAM", "LASER", "DIGITAL"
+        };
+    }
+
     GenerationPlan makePlan(
         std::string const& prompt,
         std::string const& chosenStyle,
@@ -187,10 +201,10 @@ namespace aideco {
         }
 
         int base = 0;
-        if (chosenDensity == "LOW") base = 24;
-        else if (chosenDensity == "HIGH") base = 76;
-        else if (chosenDensity == "ULTRA") base = 112;
-        else base = 48;
+        if (chosenDensity == "LOW") base = 18;
+        else if (chosenDensity == "HIGH") base = 54;
+        else if (chosenDensity == "ULTRA") base = 76;
+        else base = 36;
 
         plan.suggestedObjectCount = base;
         plan.suggestedLayerCount = chosenDensity == "LOW" ? 3 : (chosenDensity == "ULTRA" ? 6 : 5);
