@@ -28,6 +28,8 @@ namespace aideco {
         std::string summary;
     };
 
+    std::vector<std::string> availableStyles();
+
     GenerationPlan makePlan(
         std::string const& prompt,
         std::string const& chosenStyle,
