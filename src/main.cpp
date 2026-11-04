@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -47,6 +48,9 @@ namespace {
         CCLabelBMFont* m_densityLabel = nullptr;
         CCLabelBMFont* m_accentLabel = nullptr;
         CCLabelBMFont* m_layoutLabel = nullptr;
+        CCLabelBMFont* m_shuffleLabel = nullptr;
+        CCLabelBMFont* m_resetLabel = nullptr;
+        CCLabelBMFont* m_generateLabel = nullptr;
         float m_promptBaseWidth = 1.f;
         EditorUI* m_editorUI = nullptr;
         LevelEditorLayer* m_editorLayer = nullptr;
@@ -66,11 +70,7 @@ namespace {
         CCMenuItemLabel* m_resetItem = nullptr;
         CCMenuItemLabel* m_generateItem = nullptr;
 
-        std::vector<std::string> m_styles = {
-            "AUTO", "FUTURISM", "TECHNO", "NEON", "GOTHIC", "NATURE",
-            "TECH", "GLOW", "MODERN", "DARK", "PIXEL", "INDUSTRIAL",
-            "SPACE", "ORGANIC", "MINIMAL"
-        };
+        std::vector<std::string> m_styles = aideco::availableStyles();
         std::vector<std::string> m_densities = {"LOW", "MEDIUM", "HIGH", "ULTRA"};
         std::vector<std::string> m_accentModes = {"AUTO", "MONO", "DUO", "TRIAD"};
         std::vector<std::string> m_layouts = {"BALANCED", "ASYMMETRIC", "CENTERED", "RHYTHM", "MIRRORED"};
@@ -150,11 +150,21 @@ namespace {
         CCMenuItemLabel* makeMenuItem(
             std::string const& text,
             float scale,
-            SEL_MenuHandler callback
+            SEL_MenuHandler callback,
+            CCLabelBMFont** outLabel = nullptr
         ) {
             auto label = makeLabel(text, scale);
             if (!label) return nullptr;
+            if (outLabel) *outLabel = label;
             return CCMenuItemLabel::create(label, this, callback);
+        }
+
+        void fitLabel(CCLabelBMFont* label, float maxWidth, float maxHeight, float maxScale = 0.34f) {
+            if (!label) return;
+            auto size = label->getContentSize();
+            if (size.width <= 0.f || size.height <= 0.f) return;
+            float scale = std::min(maxScale, std::min(maxWidth / size.width, maxHeight / size.height));
+            label->setScale(std::max(0.18f, scale));
         }
 
         CCLayerColor* addButtonTile(float width, float height) {
@@ -179,6 +189,9 @@ namespace {
             m_densityLabel = nullptr;
             m_accentLabel = nullptr;
             m_layoutLabel = nullptr;
+            m_shuffleLabel = nullptr;
+            m_resetLabel = nullptr;
+            m_generateLabel = nullptr;
             m_promptBaseWidth = 1.f;
             m_promptInput = nullptr;
             m_colorInput = nullptr;
@@ -205,7 +218,7 @@ namespace {
             m_header->setPosition({0.f, m_panelSize.height - HEADER_HEIGHT});
             addChild(m_header, 1);
 
-            m_title = makeLabel("AI DECORATOR  /  LOCAL EDITOR", 0.42f);
+            m_title = makeLabel("AI DECORATOR  /  REMASTER TEST 10", 0.42f);
             if (m_title) {
                 m_title->setAnchorPoint({0.f, 0.5f});
                 m_title->setPosition({14.f, m_panelSize.height - HEADER_HEIGHT / 2.f});
@@ -273,15 +286,15 @@ namespace {
 
             auto actionMenu = CCMenu::create();
             actionMenu->setPosition(CCPointZero);
-            m_shuffleItem = makeMenuItem("EXAMPLE", 0.34f, menu_selector(EditorFloatingPanel::onShuffle));
-            m_resetItem = makeMenuItem("RESET", 0.36f, menu_selector(EditorFloatingPanel::onReset));
-            m_generateItem = makeMenuItem("GENERATE", 0.36f, menu_selector(EditorFloatingPanel::onGenerate));
+            m_shuffleItem = makeMenuItem("EXAMPLE", 0.34f, menu_selector(EditorFloatingPanel::onShuffle), &m_shuffleLabel);
+            m_resetItem = makeMenuItem("RESET", 0.36f, menu_selector(EditorFloatingPanel::onReset), &m_resetLabel);
+            m_generateItem = makeMenuItem("GENERATE", 0.36f, menu_selector(EditorFloatingPanel::onGenerate), &m_generateLabel);
             if (m_shuffleItem) actionMenu->addChild(m_shuffleItem);
             if (m_resetItem) actionMenu->addChild(m_resetItem);
             if (m_generateItem) actionMenu->addChild(m_generateItem);
             addChild(actionMenu, 5);
 
-            m_footer = makeLabel("V0.5.4  |  FULL-AREA SCENERY  |  LOCAL GENERATION", 0.27f);
+            m_footer = makeLabel("V1.0.9 REMASTER TEST 10  |  50 STYLES  |  LAYOUT-AWARE DECOR", 0.27f);
             if (m_footer) {
                 m_footer->setOpacity(175);
                 m_footer->setPosition({m_panelSize.width / 2.f, 20.f});
@@ -301,7 +314,7 @@ namespace {
 
         void updateControlLabels() {
             if (m_styleLabel) {
-                auto text = std::string("STYLE: ") + m_styles[m_styleIndex];
+                auto text = std::string("STYLE ") + std::to_string(m_styleIndex + 1) + "/50: " + m_styles[m_styleIndex];
                 m_styleLabel->setString(text.c_str());
             }
             if (m_densityLabel) {
@@ -316,6 +329,13 @@ namespace {
                 auto text = std::string("LAYOUT: ") + m_layouts[m_layoutIndex];
                 m_layoutLabel->setString(text.c_str());
             }
+            // Fit every settings label inside its tile after text changes. The style
+            // control can contain long names, so its scale is recalculated every time.
+            float settingsWidth = std::min(142.f, m_panelSize.width - 190.f);
+            fitLabel(m_styleLabel, settingsWidth - 12.f, 18.f, 0.34f);
+            fitLabel(m_densityLabel, settingsWidth - 12.f, 18.f, 0.34f);
+            fitLabel(m_accentLabel, settingsWidth - 12.f, 18.f, 0.34f);
+            fitLabel(m_layoutLabel, settingsWidth - 12.f, 18.f, 0.34f);
         }
 
         void layoutControls() {
@@ -344,6 +364,9 @@ namespace {
             if (m_shuffleItem) m_shuffleItem->setPosition({actionX[0], 51.f});
             if (m_resetItem) m_resetItem->setPosition({actionX[1], 51.f});
             if (m_generateItem) m_generateItem->setPosition({actionX[2], 51.f});
+            fitLabel(m_shuffleLabel, actionTileWidth - 12.f, 22.f, 0.36f);
+            fitLabel(m_resetLabel, actionTileWidth - 12.f, 22.f, 0.36f);
+            fitLabel(m_generateLabel, actionTileWidth - 12.f, 22.f, 0.36f);
             for (size_t i = 0; i < 4 && i < m_buttonTiles.size(); ++i) {
                 m_buttonTiles[i]->changeWidthAndHeight(settingsTileWidth, 25.f);
                 m_buttonTiles[i]->setPosition({settingsX, settingY[i]});
@@ -561,58 +584,65 @@ namespace {
             updateControlLabels();
         }
 
-        bool getCurrentSelectionBounds(aideco::SelectionRect& outBounds, int& selectedCount) const {
-            selectedCount = 0;
-            if (!m_editorUI || !m_editorLayer) return false;
+        bool getAutomaticLevelBounds(
+            aideco::SelectionRect& outBounds,
+            int& objectCount,
+            std::vector<aideco::GeometryAnchor>& layoutGeometry
+        ) const {
+            objectCount = 0;
+            layoutGeometry.clear();
+            if (!m_editorLayer) return false;
 
-            float minX = 0.f;
-            float minY = 0.f;
-            float maxX = 0.f;
-            float maxY = 0.f;
-            bool hasBounds = false;
+            float minX = std::numeric_limits<float>::max();
+            float maxX = std::numeric_limits<float>::lowest();
+            auto allObjects = m_editorLayer->getAllObjects();
+            if (allObjects) {
+                for (unsigned int i = 0; i < allObjects->count(); ++i) {
+                    auto object = static_cast<GameObject*>(allObjects->objectAtIndex(i));
+                    if (!object) continue;
+                    auto rect = m_editorLayer->getObjectRect(object, true, false);
+                    float left = rect.getMinX();
+                    float right = rect.getMaxX();
+                    float bottom = rect.getMinY();
+                    float top = rect.getMaxY();
+                    if (right - left < 1.f || top - bottom < 1.f) {
+                        auto position = object->getPosition();
+                        left = position.x - 15.f;
+                        right = position.x + 15.f;
+                        bottom = position.y - 15.f;
+                        top = position.y + 15.f;
+                    }
 
-            auto includeObject = [&](GameObject* object) {
-                if (!object) return;
-                auto rect = m_editorLayer->getObjectRect(object, true, false);
-                float left = rect.getMinX();
-                float right = rect.getMaxX();
-                float bottom = rect.getMinY();
-                float top = rect.getMaxY();
-
-                // A fallback for editor-only objects whose calculated rect has no size.
-                if (right - left < 1.f || top - bottom < 1.f) {
-                    auto position = object->getPosition();
-                    left = position.x - 15.f;
-                    right = position.x + 15.f;
-                    bottom = position.y - 15.f;
-                    top = position.y + 15.f;
-                }
-
-                if (!hasBounds) {
-                    minX = left;
-                    maxX = right;
-                    minY = bottom;
-                    maxY = top;
-                    hasBounds = true;
-                } else {
                     minX = std::min(minX, left);
                     maxX = std::max(maxX, right);
-                    minY = std::min(minY, bottom);
-                    maxY = std::max(maxY, top);
-                }
-                ++selectedCount;
-            };
+                    ++objectCount;
 
-            if (m_editorUI->m_selectedObjects && m_editorUI->m_selectedObjects->count() > 0) {
-                for (int i = 0; i < m_editorUI->m_selectedObjects->count(); ++i) {
-                    includeObject(static_cast<GameObject*>(m_editorUI->m_selectedObjects->objectAtIndex(i)));
+                    const float objectWidth = right - left;
+                    const float objectHeight = top - bottom;
+                    const float centerY = (bottom + top) * 0.5f;
+                    // Keep plausible layout geometry only. Oversized triggers/background
+                    // rectangles are ignored as decoration anchors, but still count for bounds.
+                    if (objectWidth >= 6.f && objectHeight >= 6.f &&
+                        objectWidth <= 360.f && objectHeight <= 220.f &&
+                        centerY >= -24.f && centerY <= 384.f) {
+                        layoutGeometry.push_back({left, bottom, right, top});
+                    }
                 }
-            } else if (m_editorUI->m_selectedObject) {
-                includeObject(m_editorUI->m_selectedObject);
             }
 
-            if (!hasBounds) return false;
-            outBounds = {minX, minY, maxX, maxY};
+            float lastObjectX = m_editorLayer->getLastObjectX();
+            if (objectCount == 0 || minX == std::numeric_limits<float>::max()) {
+                minX = 0.f;
+                maxX = std::max(1200.f, lastObjectX + 240.f);
+            } else {
+                maxX = std::max(maxX, lastObjectX);
+                minX = std::max(0.f, minX - 60.f);
+                maxX += 180.f;
+                if (maxX - minX < 900.f) maxX = minX + 900.f;
+            }
+
+            // The whole current level is scanned; no block selection is requested.
+            outBounds = {minX, 0.f, maxX, 360.f};
             return outBounds.valid();
         }
 
@@ -637,21 +667,18 @@ namespace {
             }
 
             aideco::SelectionRect selection;
-            int selectedCount = 0;
-            if (!getCurrentSelectionBounds(selection, selectedCount)) {
+            int levelObjectCount = 0;
+            std::vector<aideco::GeometryAnchor> layoutGeometry;
+            // Generation scans the full open level and measures its existing layout.
+            // Manual selection is not required; the layout itself is the source geometry.
+            if (!getAutomaticLevelBounds(selection, levelObjectCount, layoutGeometry)) {
                 FLAlertLayer::create(
                     "AI DECORATOR",
-                    "Выдели объекты по всей длине участка уровня, который нужно оформить. По горизонтали будет использован диапазон выделения, а по вертикали — всё пространство уровня.",
+                    "Не удалось определить длину уровня. Открой уровень в редакторе и попробуй снова.",
                     "OK"
                 )->show();
                 return;
             }
-
-            // Use the selected objects only to determine the horizontal level span.
-            // The vertical range is expanded to the full GD editor canvas, so scenery
-            // is generated above and below the gameplay corridor rather than on its path.
-            selection.bottom = 0.f;
-            selection.top = 360.f;
 
             auto plan = aideco::makePlan(
                 m_promptValue,
@@ -662,7 +689,7 @@ namespace {
                 m_layouts[m_layoutIndex]
             );
 
-            auto placements = aideco::makePlacements(plan, selection, m_generationSeed);
+            auto placements = aideco::makePlacements(plan, selection, layoutGeometry, m_generationSeed);
             m_generationSeed += 0x9E3779B9u;
             if (!placements.valid) {
                 auto message = placements.error.empty() ? "Не удалось создать план расстановки." : placements.error;
@@ -679,7 +706,7 @@ namespace {
                 auto object = m_editorLayer->createObject(
                     placement.objectID,
                     {placement.x, placement.y},
-                    false // false keeps the normal editor Undo history enabled
+                    true // register generated objects in the editor Undo history
                 );
                 if (!object) continue;
 
@@ -710,8 +737,10 @@ namespace {
 
             std::string message = "Готово! Создано объектов декора: " + std::to_string(created) +
                 " из " + std::to_string(placements.objects.size()) +
-                "\nВыделенных объектов-ориентиров: " + std::to_string(selectedCount) +
-                "\nРежим: декор всей высоты участка, независимо от игровой линии" +
+                "\nОбъектов, обнаруженных в уровне: " + std::to_string(levelObjectCount) +
+                "\nЭлементов layout проанализировано: " + std::to_string(placements.analyzedAnchors) +
+                "\nАктивных участков геометрии: " + std::to_string(placements.activeSegments) +
+                "\nРежим: анализ всего открытого уровня" +
                 "\nСтиль: " + plan.style + "\nТема: " + plan.detectedThemes +
                 "\nЦвета: " + plan.primaryColor + " / " + plan.accentColor +
                 "\nКомпозиция: " + plan.layout + "\nПлотность: " + plan.density +
@@ -740,12 +769,12 @@ class $modify(AIDecoratorEditorUI, EditorUI) {
         }
 
         auto launcherMenu = CCMenu::create();
-        launcherMenu->setPosition({winSize.width - 54.f, winSize.height - 32.f});
-        auto launcherTile = CCLayerColor::create(ccc4(30, 48, 72, 235), 76.f, 30.f);
+        launcherMenu->setPosition({48.f, winSize.height - 72.f});
+        auto launcherTile = CCLayerColor::create(ccc4(30, 48, 72, 235), 72.f, 26.f);
         launcherTile->setAnchorPoint({0.5f, 0.5f});
         launcherMenu->addChild(launcherTile, 0);
         auto launcherLabel = CCLabelBMFont::create("DECOR", "bigFont.fnt");
-        launcherLabel->setScale(0.46f);
+        launcherLabel->setScale(0.36f);
         auto launcherButton = CCMenuItemLabel::create(
             launcherLabel, this, menu_selector(AIDecoratorEditorUI::onToggleDecorator)
         );
